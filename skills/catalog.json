@@ -1,0 +1,30 @@
+{
+  "hand-drawn-cartoon": {
+    "name": "Hand-drawn Cartoon",
+    "description": "Warm paper, lively ink and playful storybook pacing.",
+    "source_url": "https://github.com/PHANTOMTONYT/motion-design-skills/blob/main/hand-drawn-cartoon/SKILL.md",
+    "repository": "PHANTOMTONYT/motion-design-skills",
+    "commit": "1aba2ac2e1af1a0a2496b6939c371fe1b7f5e655"
+  },
+  "apple-launch-film": {
+    "name": "Apple Launch Film",
+    "description": "Restrained product storytelling, clean type and deliberate reveals.",
+    "source_url": "https://github.com/charlie947/motion-graphics-skills/blob/main/skills/apple-launch-film/SKILL.md",
+    "repository": "charlie947/motion-graphics-skills",
+    "commit": "229022ebca76972e119e36ada23a1648d51665ab"
+  },
+  "vox-explainer": {
+    "name": "Vox Explainer",
+    "description": "Editorial clarity, bold hierarchy and a documentary rhythm.",
+    "source_url": "https://github.com/charlie947/motion-graphics-skills/blob/main/skills/vox-explainer/SKILL.md",
+    "repository": "charlie947/motion-graphics-skills",
+    "commit": "229022ebca76972e119e36ada23a1648d51665ab"
+  },
+  "kinetic-typography": {
+    "name": "Kinetic Typography",
+    "description": "Type-led storytelling with short phrases and emphatic timing.",
+    "source_url": "https://github.com/PHANTOMTONYT/motion-design-skills/blob/main/kinetic-typography/SKILL.md",
+    "repository": "PHANTOMTONYT/motion-design-skills",
+    "commit": "1aba2ac2e1af1a0a2496b6939c371fe1b7f5e655"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "imaginepro-framecraft-renderer",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=22.12" },
+  "dependencies": { "puppeteer-core": "25.16.0" }
+}

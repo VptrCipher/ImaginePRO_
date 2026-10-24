@@ -1,0 +1,154 @@
+<!doctype html>
+<html><head><meta charset="utf-8"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; img-src data:">
+<style>html,body{margin:0;background:transparent;overflow:hidden}canvas{display:block}</style></head>
+<body><canvas id="art"></canvas><script>
+// Bundled illustration only. Template Markdown and model output are never executable.
+window.initScene = function(config, clock) {
+  const cv = document.querySelector('canvas'); cv.width=config.width; cv.height=config.height;
+  const X=cv.getContext('2d',{willReadFrequently:true});
+  const W=cv.width,H=cv.height,FPS=30,NF=Math.ceil(config.duration*FPS);
+  const portrait=H>W, DW=portrait?1080:1920,DH=portrait?1920:1080;
+  const P={paper:'#f3eddf',ink:'#172f3b',pink:'#df6580',blue:'#3996a4',gold:'#e8ad3d',red:'#d8643d',ghost:'#d6cbb6',white:'#fff9e9'};
+  const clamp=x=>Math.max(0,Math.min(1,x));
+  const smooth=x=>{x=clamp(x);return x*x*(3-2*x)};
+  const out=x=>1-Math.pow(1-clamp(x),3);
+  const spring=x=>{x=clamp(x);return x===1?1:1-Math.exp(-7*x)*Math.cos(11*x)};
+  const progress=(t,a,b)=>clamp((t-a)/(b-a));
+  const rand=seed=>()=>{seed=(Math.imul(seed,1664525)+1013904223)>>>0;return seed/4294967296};
+  const paper=document.createElement('canvas');paper.width=DW;paper.height=DH;
+  const C=paper.getContext('2d');C.fillStyle=P.paper;C.fillRect(0,0,DW,DH);
+  const R=rand(88021);
+  // Cached paper: mottling, pigment specks, fibres. No per-frame random state.
+  for(let i=0;i<110;i++){
+    let x=R()*DW,y=R()*DH,r=60+R()*270;
+    let g=C.createRadialGradient(x,y,0,x,y,r);g.addColorStop(0,'rgba(129,99,50,0.022)');g.addColorStop(1,'rgba(129,99,50,0)');
+    C.fillStyle=g;C.fillRect(x-r,y-r,r*2,r*2);
+  }
+  for(let i=0;i<40000;i++){C.fillStyle=R()>.5?'rgba(64,43,21,.065)':'rgba(255,255,247,.38)';let s=.5+R()*1.6;C.fillRect(R()*DW,R()*DH,s,s);}
+  C.strokeStyle='rgba(105,84,52,.08)';C.lineWidth=.65;
+  for(let i=0;i<1900;i++){let x=R()*DW,y=R()*DH;C.beginPath();C.moveTo(x,y);C.lineTo(x+R()*12-6,y+R()*4-2);C.stroke();}
+  const dotTile=document.createElement('canvas');dotTile.width=dotTile.height=28;
+  const D=dotTile.getContext('2d');D.fillStyle='rgba(18,42,51,.31)';
+  [[0,0],[14,14],[28,0],[0,28],[28,28]].forEach(([x,y])=>{D.beginPath();D.arc(x,y,2,0,Math.PI*2);D.fill()});
+  const stipple=X.createPattern(dotTile,'repeat');
+  const grain=[];
+  for(let k=0;k<4;k++){
+    let c=document.createElement('canvas');c.width=270;c.height=480;let g=c.getContext('2d'),r=rand(99+k);
+    let im=g.createImageData(270,480);
+    for(let i=0;i<im.data.length;i+=4){let v=r()>.5?35:250;im.data[i]=im.data[i+1]=im.data[i+2]=v;im.data[i+3]=Math.round(r()*22);}
+    g.putImageData(im,0,0);grain.push(c);
+  }
+  function pathPetal(r,w,tip){
+    X.beginPath();X.moveTo(-w*.13,0);
+    X.bezierCurveTo(-w*.73,-r*.3,-w*.62,-r*.76,tip,-r);
+    X.bezierCurveTo(w*.58,-r*.82,w*.64,-r*.32,w*.14,0);X.closePath();
+  }
+  function petal(r,w,tip,color,phase){
+    X.save();X.translate(Math.sin(phase)*1.4,Math.cos(phase)*1.3);
+    // Print registration: an offset second plate and multiply overprint.
+    X.save();X.translate(3,-2);pathPetal(r,w,tip);X.fillStyle=P.gold;X.globalAlpha=.42;X.fill();X.restore();
+    pathPetal(r,w,tip);X.fillStyle=color;X.fill();
+    X.save();pathPetal(r,w,tip);X.clip();X.globalCompositeOperation='multiply';
+    X.translate(-w*.2,-r*.13);X.rotate(.21);X.fillStyle=stipple;X.fillRect(-w,-r*1.2,w*2,r*1.4);X.restore();
+    pathPetal(r,w,tip);X.strokeStyle=P.ink;X.lineWidth=2.8;X.stroke();
+    X.strokeStyle='rgba(255,249,233,.65)';X.lineWidth=3;X.beginPath();
+    X.moveTo(0,-r*.17);X.quadraticCurveTo(w*.05,-r*.5,tip,-r*.82);X.stroke();
+    X.restore();
+  }
+  function inkArc(cx,cy,rx,ry,angle,p,f,color=P.ink,width=3){
+    X.save();X.translate(cx,cy);X.rotate(angle);X.strokeStyle=color;X.lineCap='round';
+    let n=90, prev=null,boil=Math.floor(f/2);
+    for(let i=0;i<=n*p;i++){
+      let a=i/n*Math.PI*2-Math.PI/2;
+      let wobble=Math.sin(i*1.8+boil*1.7)*1.25;
+      let pt=[Math.cos(a)*(rx+wobble),Math.sin(a)*(ry+wobble)];
+      if(prev){X.lineWidth=width*(.6+.4*Math.sin(i*.23)**2);X.beginPath();X.moveTo(...prev);X.lineTo(...pt);X.stroke();}prev=pt;
+    }
+    if(prev){X.fillStyle=color;X.beginPath();X.arc(...prev,width*1.5,0,Math.PI*2);X.fill();}X.restore();
+  }
+  function circle(x,y,r,fill){X.beginPath();X.arc(x,y,Math.max(.01,r),0,Math.PI*2);X.fillStyle=fill;X.fill();}
+  function star(x,y,r,turn,color){X.save();X.translate(x,y);X.rotate(turn);X.beginPath();for(let j=0;j<8;j++){let a=j*Math.PI/4,v=j%2?r*.18:r;X.lineTo(Math.cos(a)*v,Math.sin(a)*v)}X.closePath();X.fillStyle=color;X.fill();X.restore()}
+  function label(text,x,y,size,color=P.ink,align='left',serif=false){
+    X.textAlign=align;X.textBaseline='alphabetic';X.fillStyle=color;X.font=`${serif?'italic':'500'} ${size}px ${serif?'Georgia':'"Segoe UI", Arial'}`;X.fillText(text,x,y);
+  }
+  function fitted(text,x,y,size,maxWidth,serif=true){
+    X.textAlign='left';X.textBaseline='alphabetic';X.fillStyle=P.ink;
+    let n=size;do{X.font=`${n}px ${serif?'Georgia':'"Segoe UI", Arial'}`;if(X.measureText(text).width<=maxWidth)break;n-=2}while(n>6);X.fillText(text,x,y);
+  }
+  const cx=portrait?540:1015,cy=portrait?875:546,rad=portrait?395:368;
+  window.render=function(f){
+    const seconds=f/FPS,t=clock(seconds,config.duration),boil=Math.floor(f/2);
+    X.setTransform(1,0,0,1,0,0);X.globalAlpha=1;X.globalCompositeOperation='source-over';X.filter='none';X.clearRect(0,0,W,H);
+    X.scale(W/DW,H/DH);X.drawImage(paper,0,0);
+    // Fixed poster frame. Thin ruled lines and editorial registration marks.
+    X.strokeStyle=P.ghost;X.lineWidth=1.6;X.strokeRect(36,36,DW-72,DH-72);
+    label('FRAMECRAFT  /  STUDIES IN MOTION',70,105,portrait?22:19);
+    label('01',DW-70,105,24,P.ink,'right');
+    if(portrait){fitted('An idea',70,236,110,940);fitted('takes shape.',70,350,110,940);}
+    else {fitted('An idea',90,320,110,650);fitted('takes shape.',90,440,110,650);}
+    // Ghost drawing guides establish the composition even before the first mark.
+    X.save();X.globalAlpha=.25;X.setLineDash([3,14]);inkArc(cx,cy,rad*1.12,rad*1.12,0,1,0,P.ghost,2);X.restore();
+    const pDraw=out(progress(t,.30,1.45));
+    inkArc(cx,cy,rad*1.15,rad*.69,-.48,pDraw,f,P.ink,3.7);
+    inkArc(cx,cy,rad*.95,rad*1.15,.30,out(progress(t,.65,1.9)),f,P.red,2.6);
+    // Bloom builds in successive colored ink plates, with staggered overshoot.
+    const breath=1-.035*smooth(progress(t,2.40,2.52))+.045*out(progress(t,2.7,2.95));
+    X.save();X.translate(cx,cy);X.scale(breath,breath);
+    for(let ring=0;ring<3;ring++){
+      let count=[10,12,9][ring],size=[rad,rad*.78,rad*.51][ring],wide=[132,114,93][ring];
+      for(let j=0;j<count;j++){
+        let onset=.60+ring*.35+j*.026;
+        let p=spring(progress(t,onset,onset+.58));if(p<=0)continue;
+        X.save();X.rotate(j/count*Math.PI*2+ring*.19+Math.sin(t*.65)*.015);
+        X.scale(p,p);let c=ring===0?(j%2?P.blue:P.gold):ring===1?(j%3?P.pink:P.red):P.ink;
+        petal(size,wide,Math.sin(j*4)*20,c,boil*1.7+j);X.restore();
+      }
+    }
+    let core=spring(progress(t,.08,.50));
+    circle(0,0,74*core,P.paper);circle(0,0,48*core,P.red);
+    if(t>1.1){X.save();X.globalAlpha=out(progress(t,1.1,1.6));star(0,0,36,-t*.32,P.white);circle(0,0,9,P.ink);X.restore();}
+    X.restore();
+    // Satellites are tied to the drawn orbits; their paths freeze into the payoff.
+    const motion=Math.min(t,2.44)+Math.max(0,Math.min(.28,t-2.7))*.25;
+    for(let j=0;j<4;j++){
+      let p=out(progress(t,.8+j*.24,1.3+j*.24));if(!p)continue;
+      let a=motion*.72+j*1.65-1.35;
+      let ox=Math.cos(a)*rad*1.09,oy=Math.sin(a)*rad*.82;
+      const rx=ox*Math.cos(-.48)-oy*Math.sin(-.48),ry=ox*Math.sin(-.48)+oy*Math.cos(-.48);
+      let x=cx+rx,y=cy+ry,r=[39,25,32,20][j]*p;
+      circle(x+3,y-2,r,P.gold);circle(x,y,r,[P.pink,P.ink,P.blue,P.red][j]);
+      X.save();X.beginPath();X.arc(x,y,r,0,Math.PI*2);X.clip();X.strokeStyle=P.paper;X.lineWidth=2.8;
+      for(let k=-3;k<=3;k++){X.beginPath();X.moveTo(x-r,y+k*10-r*.2);X.lineTo(x+r,y+k*10+r*.3);X.stroke();}X.restore();
+    }
+    // Little printmaker's marks add scale and secondary motion.
+    for(let j=0;j<10;j++){
+      let p=out(progress(t,1.32+j*.065,1.65+j*.065));let a=j*Math.PI*.2+.08;
+      let x=cx+Math.cos(a)*(rad*1.18),y=cy+Math.sin(a)*(rad*1.17);
+      star(x,y,(j%3?9:17)*p,Math.sin(motion+j)*.15,j%2?P.red:P.ink);
+    }
+    // Motivated final bloom: tiny seeds erupt from the same center then settle.
+    for(let j=0;j<24;j++){
+      let p=out(progress(t,2.7,3.0));if(!p)continue;let a=j/24*Math.PI*2;
+      let r=(rad*.95+40*Math.sin(j*4))*p;
+      circle(cx+Math.cos(a)*r,cy+Math.sin(a)*r,(2+j%3)*p,j%2?P.paper:P.gold);
+    }
+    // Foreground is part of the poster, not an unrelated cutaway.
+    const gy=portrait?1330:875;
+    X.strokeStyle=P.ghost;X.lineWidth=2;X.beginPath();X.moveTo(70,gy);X.bezierCurveTo(DW*.27,gy-65,DW*.61,gy+65,DW-70,gy-10);X.stroke();
+    if(portrait){
+      X.save();X.globalAlpha=out(progress(t,2.7,2.98));
+      let words=config.text.replace(/\n/g,' ').split(/(?<=[.!?])\s+/).filter(Boolean);
+      if(words.length===1&&words[0].length>23){let a=words[0].split(' '),mid=Math.ceil(a.length/2);words=[a.slice(0,mid).join(' '),a.slice(mid).join(' ')]}
+      fitted(words[0]||'Small spark.',70,1460,106,940);
+      fitted(words.slice(1).join(' ')||'Big world.',70,1576,106,940);
+      fitted(config.detail||'Made of paper, ink & possibility.',73,1644,25,934,false);X.restore();
+    }else{
+      X.save();X.globalAlpha=out(progress(t,2.7,2.98));fitted(config.text.replace(/\n/g,' '),90,736,84,1690);
+      fitted(config.detail||'Made of paper, ink & possibility.',94,807,25,1690,false);X.restore();
+    }
+    X.save();X.globalCompositeOperation='multiply';X.globalAlpha=.55;X.drawImage(grain[f%4],0,0,DW,DH);X.restore();
+    X.globalAlpha=1;X.globalCompositeOperation='source-over';X.setTransform(1,0,0,1,0,0);
+  };
+  window.sceneInfo={FPS,NF};window.READY=true;window.render(0);
+};
+</script></body></html>
